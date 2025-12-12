@@ -13,3 +13,4 @@ openpyxl
 json5
 xlrd
 waitress
+gunicorn
