@@ -80,7 +80,7 @@ class HybridRFSVM(BaseEstimator, ClassifierMixin):
 
     MODEL_PATH = "model/api_model.joblib"
     with open(MODEL_PATH, "rb") as f:
-    model_data = joblib.load(f, mmap_mode=None)
+        model_data = joblib.load(f, mmap_mode=None)
     
     def fit(self, X, y):
         y_encoded = self.label_encoder.fit_transform(y)
@@ -1747,4 +1747,5 @@ if __name__ == "__main__":
     
 
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
