@@ -1,0 +1,71 @@
+{
+  "weights": {
+    "blood_pressure": 0.3,
+    "heart_rate": 0.2,
+    "temperature": 0.15,
+    "age": 0.1,
+    "bmi": 0.05,
+    "lifestyle": 0.03,
+    "family_history": 0.1,
+    "diabetes": 0.07
+  },
+  "thresholds": {
+    "SANGAT_RENDAH": [
+      0,
+      20
+    ],
+    "RENDAH": [
+      21,
+      40
+    ],
+    "SEDANG": [
+      41,
+      55
+    ],
+    "SEDANG_TINGGI": [
+      56,
+      70
+    ],
+    "TINGGI": [
+      71,
+      85
+    ],
+    "SANGAT_TINGGI": [
+      86,
+      100
+    ]
+  },
+  "model_classes": [
+    "BORDERLINE_HYPERTENSION",
+    "BRADYCARDIA",
+    "HYPERTENSION_CRISIS",
+    "HYPERTENSION_STAGE1",
+    "HYPERTENSION_STAGE2",
+    "NORMAL",
+    "TACHYCARDIA"
+  ],
+  "frs_config": {
+    "version": "framingham_2008",
+    "gender_based": true,
+    "risk_categories": {
+      "LOW": [
+        0,
+        10
+      ],
+      "BORDERLINE": [
+        11,
+        20
+      ],
+      "INTERMEDIATE": [
+        21,
+        30
+      ],
+      "HIGH": [
+        31,
+        100
+      ]
+    }
+  },
+  "version": "6.0-full-integration",
+  "note": "Full integration: Temperature as risk factor, Framingham Risk Score, Family History"
+}

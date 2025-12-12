@@ -1,0 +1,39 @@
+{
+  "weights": {
+    "blood_pressure": 0.3,
+    "heart_rate": 0.2,
+    "temperature": 0.15,
+    "age": 0.1,
+    "bmi": 0.05,
+    "lifestyle": 0.03,
+    "family_history": 0.1,
+    "diabetes": 0.07
+  },
+  "thresholds": {
+    "SANGAT_RENDAH": [
+      0,
+      20
+    ],
+    "RENDAH": [
+      21,
+      40
+    ],
+    "SEDANG": [
+      41,
+      55
+    ],
+    "SEDANG_TINGGI": [
+      56,
+      70
+    ],
+    "TINGGI": [
+      71,
+      85
+    ],
+    "SANGAT_TINGGI": [
+      86,
+      100
+    ]
+  },
+  "version": "optimized-risk-calculator"
+}
