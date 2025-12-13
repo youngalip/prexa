@@ -1209,8 +1209,7 @@ class CardiovascularPredictor:
         return recommendations[:10]  
 
 
-MODEL_DIR = "model"
-MODEL_PATH = os.path.join(MODEL_DIR, "api_model.joblib")
+MODEL_PATH = "model/api_model.joblib"
 
 
 app = Flask(__name__)
@@ -1743,4 +1742,5 @@ if __name__ == "__main__":
     
 
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
