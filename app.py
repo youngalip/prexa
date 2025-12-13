@@ -1231,13 +1231,6 @@ if os.path.exists(MODEL_PATH):
         feature_names = model_data.get("feature_names")
         model_info = model_data.get("model_info", {})
         
-      
-        pipeline = model_data.get("pipeline")
-        label_encoder = model_data.get("label_encoder")
-        feature_names = model_data.get("feature_names")
-        model_info = model_data.get("model_info", {})
-        
-        
         risk_calculator = OptimizedRiskScoreCalculator()
         frs_calculator = FraminghamRiskScoreCalculator()
         
@@ -1741,6 +1734,7 @@ if __name__ == "__main__":
     
 
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
