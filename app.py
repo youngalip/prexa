@@ -1227,10 +1227,40 @@ predictor = None
 
 if os.path.exists(MODEL_PATH):
     try:
-        logger.info(f" Model file exists, loading...")
+        logger.info(f" Model file exists, loading with custom unpickler...")
+        
+        
+        import sys
+        import __main__
         
        
-        model_data = joblib.load(MODEL_PATH)
+        __main__.HybridRFSVM = HybridRFSVM
+        sys.modules['__main__'].HybridRFSVM = HybridRFSVM
+        
+       
+        import pickle
+        
+        class HybridRFSVMUnpickler(pickle.Unpickler):
+            def find_class(self, module, name):
+                if name == 'HybridRFSVM':
+                    return HybridRFSVM
+                
+                if module == '__main__' and name == 'HybridRFSVM':
+                    return HybridRFSVM
+               
+                try:
+                    return super().find_class(module, name)
+                except AttributeError:
+                    
+                    if name == 'HybridRFSVM':
+                        return HybridRFSVM
+                    raise
+        
+       
+        with open(MODEL_PATH, 'rb') as f:
+            model_data = HybridRFSVMUnpickler(f).load()
+        
+        logger.info(" Model loaded successfully with custom unpickler!")
         
         pipeline = model_data.get("pipeline")
         label_encoder = model_data.get("label_encoder")
@@ -1258,7 +1288,7 @@ if os.path.exists(MODEL_PATH):
             use_model = True
             logger.info(" Model loaded successfully!")
             logger.info(f"   Model: {model_info.get('name', 'Cardiovascular Risk Predictor')}")
-            logger.info(f"   Version: model_info.get('version', 'v6.0')")
+            logger.info(f"   Version: {model_info.get('version', 'v6.0')}")  
             logger.info(f"   Features: {len(feature_names)}")
             
             if label_encoder:
@@ -1741,6 +1771,7 @@ if __name__ == "__main__":
     
 
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
