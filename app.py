@@ -2,9 +2,6 @@ import os
 import sys
 from pathlib import Path
 import logging
-import os
-import sys
-from pathlib import Path
 
 logging.basicConfig(
     level=logging.INFO,
@@ -80,11 +77,12 @@ class HybridRFSVM(BaseEstimator, ClassifierMixin):
         self.label_encoder = LabelEncoder()
         self.classes_ = None
         self.feature_importances_ = None
-    
+
     def fit(self, X, y):
         y_encoded = self.label_encoder.fit_transform(y)
         self.classes_ = self.label_encoder.classes_
         
+       
         classes = np.unique(y_encoded)
         weights = compute_class_weight('balanced', classes=classes, y=y_encoded)
         class_weights = dict(zip(range(len(classes)), weights))
@@ -92,6 +90,7 @@ class HybridRFSVM(BaseEstimator, ClassifierMixin):
         X_train_final = X
         y_train_final = y_encoded
         
+      
         self.rf_model = RandomForestClassifier(
             n_estimators=200,
             max_depth=15,
@@ -105,6 +104,7 @@ class HybridRFSVM(BaseEstimator, ClassifierMixin):
         )
         self.rf_model.fit(X_train_final, y_train_final)
         self.feature_importances_ = self.rf_model.feature_importances_
+        
         
         svm_base = SVC(
             C=1.0,
@@ -126,11 +126,13 @@ class HybridRFSVM(BaseEstimator, ClassifierMixin):
         return self
     
     def predict(self, X):
+       
         rf_pred = self.rf_model.predict(X)
         svm_proba = self.svm_calibrator.predict_proba(X)
         svm_pred = np.argmax(svm_proba, axis=1)
         svm_confidence = np.max(svm_proba, axis=1)
         
+       
         class_counts = np.bincount(rf_pred)
         class_weights = 1.0 / (class_counts + 1)
         class_weights = class_weights / class_weights.max()
@@ -149,12 +151,14 @@ class HybridRFSVM(BaseEstimator, ClassifierMixin):
         return self.label_encoder.inverse_transform(hybrid_pred)
     
     def predict_proba(self, X):
+       
         rf_proba = self.rf_model.predict_proba(X)
         svm_proba = self.svm_calibrator.predict_proba(X)
         avg_proba = (0.6 * rf_proba) + (0.4 * svm_proba)
         return avg_proba / avg_proba.sum(axis=1, keepdims=True)
     
     def score(self, X, y):
+       
         y_pred = self.predict(X)
         return accuracy_score(y, y_pred)
     
@@ -1204,10 +1208,13 @@ class CardiovascularPredictor:
         
         return recommendations[:10]  
 
+
 MODEL_DIR = "model"
 MODEL_PATH = os.path.join(MODEL_DIR, "api_model.joblib")
 
+
 app = Flask(__name__)
+
 
 logger.info(f"\n Loading model from: {MODEL_PATH}")
 
@@ -1224,16 +1231,19 @@ predictor = None
 if os.path.exists(MODEL_PATH):
     try:
         logger.info(f" Model file exists, loading...")
-        model_data = joblib.load(MODEL_PATH)  
+        model_data = joblib.load(MODEL_PATH)
         
+      
         pipeline = model_data.get("pipeline")
         label_encoder = model_data.get("label_encoder")
         feature_names = model_data.get("feature_names")
         model_info = model_data.get("model_info", {})
         
+        
         risk_calculator = OptimizedRiskScoreCalculator()
         frs_calculator = FraminghamRiskScoreCalculator()
         
+      
         logger.info(f" Model verification:")
         logger.info(f"   Pipeline type: {type(pipeline).__name__ if pipeline else 'None'}")
         logger.info(f"   Label encoder: {'Loaded' if label_encoder else 'Not loaded'}")
@@ -1269,6 +1279,7 @@ if os.path.exists(MODEL_PATH):
 else:
     logger.error(f" Model not found at {MODEL_PATH}")
     logger.error("   Please run train.py first to generate model")
+
 
 @app.route("/")
 def index():
@@ -1732,10 +1743,4 @@ if __name__ == "__main__":
     
 
     app.run(host="0.0.0.0", port=5000, debug=True)
-
-
-
-
-
-
 
