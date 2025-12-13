@@ -24,12 +24,11 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.class_weight import compute_class_weight
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, balanced_accuracy_score
+from sklearn.metrics import accuracy_score
 import warnings
 warnings.filterwarnings('ignore')
 
 def parse_boolean(value):
-  
     if value is None:
         return False
     if isinstance(value, bool):
@@ -41,7 +40,6 @@ def parse_boolean(value):
         elif value_lower in ['false', '0', 'no', 'n', 'f', 'tidak', 'tdk']:
             return False
         else:
-            
             try:
                 return int(value) != 0
             except:
@@ -51,7 +49,6 @@ def parse_boolean(value):
     return bool(value)
 
 def parse_float_or_none(value):
-   
     if value is None:
         return None
     if isinstance(value, str):
@@ -82,7 +79,6 @@ class HybridRFSVM(BaseEstimator, ClassifierMixin):
         y_encoded = self.label_encoder.fit_transform(y)
         self.classes_ = self.label_encoder.classes_
         
-       
         classes = np.unique(y_encoded)
         weights = compute_class_weight('balanced', classes=classes, y=y_encoded)
         class_weights = dict(zip(range(len(classes)), weights))
@@ -90,7 +86,6 @@ class HybridRFSVM(BaseEstimator, ClassifierMixin):
         X_train_final = X
         y_train_final = y_encoded
         
-      
         self.rf_model = RandomForestClassifier(
             n_estimators=200,
             max_depth=15,
@@ -104,7 +99,6 @@ class HybridRFSVM(BaseEstimator, ClassifierMixin):
         )
         self.rf_model.fit(X_train_final, y_train_final)
         self.feature_importances_ = self.rf_model.feature_importances_
-        
         
         svm_base = SVC(
             C=1.0,
@@ -126,13 +120,11 @@ class HybridRFSVM(BaseEstimator, ClassifierMixin):
         return self
     
     def predict(self, X):
-       
         rf_pred = self.rf_model.predict(X)
         svm_proba = self.svm_calibrator.predict_proba(X)
         svm_pred = np.argmax(svm_proba, axis=1)
         svm_confidence = np.max(svm_proba, axis=1)
         
-       
         class_counts = np.bincount(rf_pred)
         class_weights = 1.0 / (class_counts + 1)
         class_weights = class_weights / class_weights.max()
@@ -151,14 +143,12 @@ class HybridRFSVM(BaseEstimator, ClassifierMixin):
         return self.label_encoder.inverse_transform(hybrid_pred)
     
     def predict_proba(self, X):
-       
         rf_proba = self.rf_model.predict_proba(X)
         svm_proba = self.svm_calibrator.predict_proba(X)
         avg_proba = (0.6 * rf_proba) + (0.4 * svm_proba)
         return avg_proba / avg_proba.sum(axis=1, keepdims=True)
     
     def score(self, X, y):
-       
         y_pred = self.predict(X)
         return accuracy_score(y, y_pred)
     
@@ -174,22 +164,8 @@ class HybridRFSVM(BaseEstimator, ClassifierMixin):
         return self
 
 
-import pickle
-
-class HybridRFSVMUnpickler(pickle.Unpickler):
-    def find_class(self, module, name):
-        
-        if name == 'HybridRFSVM':
-          
-            print("!!! Custom Unpickler: Menemukan permintaan untuk HybridRFSVM, mengembalikan kelas lokal !!!")
-            return HybridRFSVM
-       
-        return super().find_class(module, name)
-
-
 class FraminghamRiskScoreCalculator:
     def __init__(self):
-      
         self.male_points = {
             'age': {
                 20: -9, 25: -7, 30: -4, 35: 0, 40: 1, 45: 2, 
@@ -228,7 +204,6 @@ class FraminghamRiskScoreCalculator:
             'diabetes': {True: 3, False: 0}
         }
         
-       
         self.male_risk = {
             -20: 0.1, -19: 0.1, -18: 0.1, -17: 0.1, -16: 0.1, -15: 0.1, 
             -14: 0.1, -13: 0.1, -12: 0.1, -11: 0.1, -10: 0.1, -9: 0.1,
@@ -262,9 +237,7 @@ class FraminghamRiskScoreCalculator:
         }
     
     def calculate_complete_frs(self, age, total_chol, hdl, systolic_bp, smoker, diabetic, gender='male', bp_treated=False):
-        
         try:
-          
             age = int(age)
             total_chol = int(total_chol)
             hdl = int(hdl)
@@ -274,21 +247,19 @@ class FraminghamRiskScoreCalculator:
             risk_percentage = self.calculate_10_year_risk(points, gender)
             risk_category = self.get_risk_category(risk_percentage)
             
-           
             if risk_category == 'LOW':
-                color = '#10b981'  
+                color = '#10b981'
                 emoji = '🟢'
                 recommendation = f'Risiko rendah ({risk_percentage}%). Pertahankan gaya hidup sehat.'
             elif risk_category == 'INTERMEDIATE':
-                color = '#f59e0b'  
+                color = '#f59e0b'
                 emoji = '🟡'
                 recommendation = f'Risiko sedang ({risk_percentage}%). Perbaiki gaya hidup dan konsultasi dokter.'
             else: 
-                color = '#ef4444'  
+                color = '#ef4444'
                 emoji = '🔴'
                 recommendation = f'RISIKO TINGGI ({risk_percentage}%)! Evaluasi medis segera diperlukan!'
             
-           
             components = {
                 'age': age,
                 'total_cholesterol': total_chol,
@@ -300,7 +271,6 @@ class FraminghamRiskScoreCalculator:
                 'gender': gender
             }
             
-           
             dominant_factors = []
             if total_chol >= 240:
                 dominant_factors.append(f"Kolesterol tinggi ({total_chol} mg/dL)")
@@ -336,11 +306,9 @@ class FraminghamRiskScoreCalculator:
             }
     
     def calculate_frs_points(self, age, total_chol, hdl, systolic_bp, smoker, diabetic, gender='male', bp_treated=False):
-        
         points = 0
         table = self.male_points if gender.lower() == 'male' else self.female_points
         
-      
         if age < 35:
             points += -5
         elif age < 45:
@@ -352,7 +320,6 @@ class FraminghamRiskScoreCalculator:
         else:
             points += 10
         
-        
         if total_chol < 160:
             points += 0
         elif total_chol < 200:
@@ -362,18 +329,16 @@ class FraminghamRiskScoreCalculator:
         elif total_chol < 280:
             points += 6
         else:  
-            points += 8  
-        
+            points += 8
         
         if hdl < 40:
-            points += 4  
+            points += 4
         elif hdl < 50:
             points += 2
         elif hdl < 60:
             points += 0
         else:  
             points += -2
-        
         
         bp_status = 'treated' if bp_treated else 'untreated'
         if systolic_bp < 120:
@@ -387,29 +352,23 @@ class FraminghamRiskScoreCalculator:
         else: 
             points += 5
         
-       
         if smoker:
-            points += 4  
-        
+            points += 4
         
         if diabetic:
-            points += 3  
+            points += 3
         
         return points
     
     def calculate_10_year_risk(self, points, gender='male'):
-        
         risk_table = self.male_risk if gender.lower() == 'male' else self.female_risk
         
-      
         if points <= 0:
             return 0.1
-        
         
         if points in risk_table:
             return risk_table[points]
         
-      
         sorted_points = sorted(risk_table.keys())
         
         if points < sorted_points[0]:
@@ -427,7 +386,6 @@ class FraminghamRiskScoreCalculator:
         return 0.1
     
     def get_risk_category(self, risk_percentage):
-        
         for category, (min_val, max_val) in self.risk_categories.items():
             if min_val <= risk_percentage <= max_val:
                 return category
@@ -435,7 +393,6 @@ class FraminghamRiskScoreCalculator:
 
 
 class OptimizedRiskScoreCalculator:
-   
     def __init__(self):
         self.risk_thresholds = {
             'SANGAT_RENDAH': (0, 20),
@@ -459,9 +416,7 @@ class OptimizedRiskScoreCalculator:
     
     def calculate_component_scores(self, systole, diastole, heart_rate, temperature, age, bmi, smoking, active,
                                   diabetic=False, family_history=False, family_history_score=0, family_history_type='none'):
-        
         scores = {}
-        
         
         if systole >= 180 or diastole >= 120:
             bp_score = 35
@@ -479,7 +434,6 @@ class OptimizedRiskScoreCalculator:
             bp_score = 0
         scores['blood_pressure'] = bp_score
         
-      
         if heart_rate >= 150:
             hr_score = 25
         elif heart_rate >= 130:
@@ -497,7 +451,6 @@ class OptimizedRiskScoreCalculator:
         else:
             hr_score = 0
         scores['heart_rate'] = hr_score
-        
         
         if temperature >= 40.0:
             temp_score = 20
@@ -519,7 +472,6 @@ class OptimizedRiskScoreCalculator:
             temp_score = 0
         scores['temperature'] = temp_score
         
-       
         if age >= 75:
             age_score = 12
         elif age >= 65:
@@ -536,7 +488,6 @@ class OptimizedRiskScoreCalculator:
             age_score = 0
         scores['age'] = age_score
         
-       
         if bmi >= 35:
             bmi_score = 5
         elif bmi >= 30:
@@ -551,7 +502,6 @@ class OptimizedRiskScoreCalculator:
             bmi_score = 0
         scores['bmi'] = bmi_score
         
-       
         lifestyle_score = 0
         if smoking == 'current':
             lifestyle_score += 2
@@ -561,9 +511,7 @@ class OptimizedRiskScoreCalculator:
             lifestyle_score += 1
         scores['lifestyle'] = min(3, lifestyle_score)
         
-      
         scores['diabetes'] = 7 if diabetic else 0
-        
         
         family_history_val = 0
         if family_history:
@@ -588,7 +536,6 @@ class OptimizedRiskScoreCalculator:
         return scores
     
     def calculate_family_history_impact(self, family_history, family_history_score, family_history_type, age, condition_scores):
-        
         impact_multiplier = 1.0
         impact_description = ""
         
@@ -615,7 +562,6 @@ class OptimizedRiskScoreCalculator:
         return impact_multiplier, impact_description
     
     def calculate_fever_impact(self, temperature, condition_scores):
-       
         impact_multiplier = 1.0
         impact_description = ""
         
@@ -643,7 +589,6 @@ class OptimizedRiskScoreCalculator:
     def calculate_optimized_risk_score(self, systole, diastole, heart_rate, temperature, age, bmi, 
                                       smoking_status, active_lifestyle, diabetic=False, family_history=False,
                                       family_history_score=0, family_history_type='none'):
-       
         component_scores = self.calculate_component_scores(
             systole, diastole, heart_rate, temperature, age, bmi, 
             smoking_status, active_lifestyle, diabetic, family_history, 
@@ -689,7 +634,6 @@ class OptimizedRiskScoreCalculator:
         return final_score, component_scores, combined_description.strip()
     
     def determine_optimized_risk_level(self, risk_score, combined_description=""):
-        """Menentukan level risiko"""
         if risk_score >= 86:
             return 'SANGAT_TINGGI', '#FF0000', '🔴', f'Segera konsultasi dokter! {combined_description}'
         elif risk_score >= 71:
@@ -712,9 +656,7 @@ class CardiovascularPredictor:
         self.frs_calculator = frs_calculator
         self.feature_names = feature_names or []
         
-       
         self._analyze_features()
-        
         
         self.condition_descriptions = {
             'NORMAL': 'Semua parameter vital dalam batas normal. Kondisi kesehatan baik.',
@@ -726,7 +668,6 @@ class CardiovascularPredictor:
             'BRADYCARDIA': 'Denyut jantung rendah (bradycardia). Pemeriksaan lebih lanjut diperlukan.'
         }
         
-        
         self.risk_level_descriptions = {
             'SANGAT_RENDAH': 'Risiko sangat rendah. Pertahankan gaya hidup sehat.',
             'RENDAH': 'Risiko rendah. Lanjutkan gaya hidup sehat.',
@@ -737,13 +678,11 @@ class CardiovascularPredictor:
         }
 
     def _analyze_features(self):
-        
         self.numeric_features = []
         self.categorical_mappings = {}
         self.binary_features = []
         
         for feat in self.feature_names:
-           
             if '_' in feat and any(x in feat for x in ['smoking_status', 'fever_severity', 
                                                        'gender', 'family_history_type', 
                                                        'inheritance_pattern']):
@@ -755,11 +694,9 @@ class CardiovascularPredictor:
                         self.categorical_mappings[base_feature] = []
                     self.categorical_mappings[base_feature].append(value)
             
-          
             elif feat in ['family_history_cvd', 'diabetes', 'has_fever']:
                 self.binary_features.append(feat)
             
-           
             else:
                 self.numeric_features.append(feat)
         
@@ -769,12 +706,8 @@ class CardiovascularPredictor:
         logger.info(f"   Categorical mappings: {self.categorical_mappings}")
 
     def calculate_derived_features(self, systole, diastole, heart_rate, temperature):
-       
         map_value = diastole + (systole - diastole) / 3
-        
-        
         pulse_pressure = systole - diastole
-        
         
         if heart_rate < 60:
             hr_variability = np.random.normal(25, 8)
@@ -798,7 +731,6 @@ class CardiovascularPredictor:
                       age=None, bmi=None, smoking_status=None, active_lifestyle=None,
                       diabetes=None, family_history_cvd=None, family_history_score=None,
                       family_history_type=None, gender=None, inheritance_pattern=None):
-       
         age = age if age is not None else 45
         bmi = bmi if bmi is not None else 24.0
         smoking_status = smoking_status if smoking_status is not None else 'never'
@@ -810,7 +742,6 @@ class CardiovascularPredictor:
         gender = gender if gender is not None else 'male'
         inheritance_pattern = inheritance_pattern if inheritance_pattern is not None else 'none'
 
-        
         try:
             systole = float(systole)
             diastole = float(diastole)
@@ -822,14 +753,11 @@ class CardiovascularPredictor:
         except (ValueError, TypeError) as e:
             raise ValueError(f"Invalid input type: {e}")
         
-       
         if systole <= diastole:
             raise ValueError(f"Systole ({systole}) harus lebih besar dari Diastole ({diastole})")
         
-      
         derived = self.calculate_derived_features(systole, diastole, heart_rate, temperature)
         
-       
         if temperature >= 39.0:
             fever_severity = 'high'
         elif temperature >= 38.0:
@@ -841,13 +769,10 @@ class CardiovascularPredictor:
         
         has_fever = temperature >= 37.5
         
-       
         input_data = {}
         
-       
         for feature in self.feature_names:
             input_data[feature] = 0.0
-        
         
         numeric_map = {
             'systole': systole,
@@ -866,38 +791,31 @@ class CardiovascularPredictor:
             if feat in self.feature_names:
                 input_data[feat] = value
         
-        
         smoking_col = f"smoking_status_{smoking_status}"
         if smoking_col in self.feature_names:
             input_data[smoking_col] = 1.0
-        
         
         active_str = "true" if active_lifestyle else "false"
         active_col = f"active_lifestyle_{active_str}"
         if active_col in self.feature_names:
             input_data[active_col] = 1.0
         
-       
         fever_col = f"fever_severity_{fever_severity}"
         if fever_col in self.feature_names:
             input_data[fever_col] = 1.0
-        
         
         family_type_col = f"family_history_type_{family_history_type}"
         if family_type_col in self.feature_names:
             input_data[family_type_col] = 1.0
         
-        
         gender_col = f"gender_{gender}"
         if gender_col in self.feature_names:
             input_data[gender_col] = 1.0
         
-       
         inherit_col = f"inheritance_pattern_{inheritance_pattern}"
         if inherit_col in self.feature_names:
             input_data[inherit_col] = 1.0
         
-       
         binary_map = {
             'family_history_cvd': 1.0 if family_history_cvd else 0.0,
             'diabetes': 1.0 if diabetes else 0.0,
@@ -908,29 +826,22 @@ class CardiovascularPredictor:
             if feat in self.feature_names:
                 input_data[feat] = value
         
-        
         input_df = pd.DataFrame([input_data])
         
-        
         if self.feature_names:
-            
             missing_in_df = [f for f in self.feature_names if f not in input_df.columns]
             extra_in_df = [f for f in input_df.columns if f not in self.feature_names]
             
             if missing_in_df:
                 logger.warning(f" Missing features in input_df: {missing_in_df}")
-               
                 for feat in missing_in_df:
                     input_df[feat] = 0.0
             
             if extra_in_df:
                 logger.warning(f" Extra features in input_df: {extra_in_df}")
-               
                 input_df = input_df.drop(columns=extra_in_df)
             
-           
             input_df = input_df[self.feature_names]
-        
         
         logger.info(f" Input shape: {input_df.shape}")
         logger.info(f" Feature count: {len(self.feature_names)}")
@@ -943,7 +854,6 @@ class CardiovascularPredictor:
                                  smoking_status=None, active_lifestyle=None,
                                  diabetes=None, family_history_cvd=None,
                                  family_history_score=None, family_history_type=None):
-       
         try:
             if input_df.empty:
                 raise ValueError("Input data kosong")
@@ -951,12 +861,10 @@ class CardiovascularPredictor:
             if self.pipeline is None:
                 raise ValueError("Model pipeline tidak tersedia")
             
-          
             predicted_condition = self.pipeline.predict(input_df)[0]
             proba = self.pipeline.predict_proba(input_df)[0]
             confidence = np.max(proba) * 100
             
-           
             probabilities_dict = {}
             probabilities_percent = {}
             
@@ -964,7 +872,6 @@ class CardiovascularPredictor:
                 for i, class_name in enumerate(self.label_encoder.classes_):
                     probabilities_dict[class_name] = float(proba[i])
                     probabilities_percent[class_name] = float(proba[i] * 100)
-            
             
             systole = systole if systole is not None else 120.0
             diastole = diastole if diastole is not None else 80.0
@@ -979,7 +886,6 @@ class CardiovascularPredictor:
             family_history_score = family_history_score if family_history_score is not None else 0
             family_history_type = family_history_type if family_history_type is not None else 'none'
             
-           
             custom_risk_score, components, combined_description = self.risk_calculator.calculate_optimized_risk_score(
                 systole, diastole,
                 heart_rate, temperature,
@@ -994,7 +900,6 @@ class CardiovascularPredictor:
             custom_risk_level, custom_risk_color, custom_risk_emoji, custom_risk_recommendation = self.risk_calculator.determine_optimized_risk_level(
                 custom_risk_score, combined_description
             )
-            
             
             frs_result = None
             has_lab_data = False
@@ -1032,7 +937,6 @@ class CardiovascularPredictor:
                     'note': 'Error menghitung Framingham Risk Score',
                     'error': str(e)
                 }
-            
             
             personalized_recommendations = self.generate_recommendations(
                 predicted_condition, bmi, diabetes, smoking_status,
@@ -1103,10 +1007,8 @@ class CardiovascularPredictor:
     def generate_recommendations(self, condition, bmi, diabetes, smoking_status, 
                                  active_lifestyle, family_history_cvd, family_history_type,
                                  risk_level, age, heart_rate, systole, diastole):
-       
         recommendations = []
         
-       
         if condition == 'NORMAL':
             recommendations.append("Pertahankan gaya hidup sehat dengan pola makan seimbang")
             recommendations.append("Olahraga rutin 30 menit sehari, 5 kali seminggu")
@@ -1148,7 +1050,6 @@ class CardiovascularPredictor:
             recommendations.append("Monitor gejala pusing atau pingsan")
             recommendations.append("Cek EKG untuk menilai ritme jantung")
         
-       
         if bmi >= 27.5:
             recommendations.append("Program penurunan berat badan: target turun 5-10% dari berat saat ini")
             recommendations.append("Konsultasi gizi untuk diet rendah kalori seimbang")
@@ -1165,27 +1066,23 @@ class CardiovascularPredictor:
             recommendations.append("Konsultasi gizi untuk peningkatan berat badan sehat")
             recommendations.append("Latihan beban untuk membangun massa otot")
         
-      
         if diabetes:
             recommendations.append("Kontrol gula darah ketat (HbA1c <7%)")
             recommendations.append("Diet diabetes: rendah GI, tinggi serat")
             recommendations.append("Monitor gula darah rutin")
             recommendations.append("Cek kesehatan kaki dan mata secara berkala")
         
-       
         if smoking_status == 'current':
             recommendations.append("PROGRAM BERHENTI MEROKOK segera")
             recommendations.append("Konsultasi dokter untuk terapi pengganti nikotin")
             recommendations.append("Hindari lingkungan yang memicu keinginan merokok")
             recommendations.append("Gabung support group untuk berhenti merokok")
         
-       
         if not active_lifestyle:
             recommendations.append("Mulai aktivitas fisik dari yang ringan, seperti jalan kaki 10 menit/hari")
             recommendations.append("Gunakan pedometer untuk target 7.000-10.000 langkah/hari")
             recommendations.append("Kurangi waktu duduk, berdiri setiap 30 menit")
         
-       
         if family_history_cvd:
             recommendations.append("Screening kardiovaskular lebih dini karena riwayat keluarga")
             if family_history_type == 'premature':
@@ -1193,25 +1090,21 @@ class CardiovascularPredictor:
             recommendations.append("Kontrol faktor risiko ekstra ketat")
             recommendations.append("Edukasi keluarga tentang pencegahan penyakit jantung")
         
-        
         if age >= 50:
             recommendations.append("Screening kesehatan tahunan (kolesterol, gula darah, EKG)")
             recommendations.append("Diet Mediterania untuk kesehatan jantung")
             recommendations.append("Aktivitas fisik sesuai kemampuan, hindari high-impact")
         
-       
         if systole >= 140 or diastole >= 90:
             recommendations.append("Monitor tekanan darah 2x sehari (pagi dan malam)")
             recommendations.append("Catat dalam log tekanan darah")
             recommendations.append("Kurangi stres dengan teknik relaksasi")
         
-       
         if heart_rate > 100:
             recommendations.append("Hindari stimulan (kafein, energi drink)")
             recommendations.append("Latihan relaksasi dan pernapasan dalam")
             recommendations.append("Cukup tidur 7-8 jam/hari")
         
-       
         if risk_level in ['TINGGI', 'SANGAT_TINGGI']:
             recommendations.insert(0, "SEGERA KONSULTASI DOKTER atau ke IGD")
         elif risk_level == 'SEDANG_TINGGI':
@@ -1219,15 +1112,13 @@ class CardiovascularPredictor:
         elif risk_level == 'SEDANG':
             recommendations.insert(0, "Konsultasi dokter dalam 1-2 bulan")
         
-        return recommendations[:10]  
+        return recommendations[:10]
 
 
 MODEL_DIR = "model"
 MODEL_PATH = os.path.join(MODEL_DIR, "api_model.joblib")
 
-
 app = Flask(__name__)
-
 
 logger.info(f"\n Loading model from: {MODEL_PATH}")
 
@@ -1241,29 +1132,16 @@ feature_names = None
 model_info = None
 predictor = None
 
-
+# Untuk GitHub Codespaces, kita tambahkan fallback jika model tidak ada
 if os.path.exists(MODEL_PATH):
     try:
-        logger.info(f" Model file exists, loading with custom unpickler...")
+        logger.info(f" Model file exists, loading...")
+        model_data = joblib.load(MODEL_PATH)
         
-        
-        with open(MODEL_PATH, 'rb') as f:
-            model_data = HybridRFSVMUnpickler(f).load()
-        
-        logger.info(" Model loaded successfully with custom unpickler!")
-        
-      
-        if isinstance(model_data, dict):
-            pipeline = model_data.get("pipeline")
-            label_encoder = model_data.get("label_encoder")
-            feature_names = model_data.get("feature_names")
-            model_info = model_data.get("model_info", {})
-        else:
-           
-            pipeline = model_data
-            label_encoder = None
-            feature_names = []
-            model_info = {}
+        pipeline = model_data.get("pipeline")
+        label_encoder = model_data.get("label_encoder")
+        feature_names = model_data.get("feature_names")
+        model_info = model_data.get("model_info", {})
         
         risk_calculator = OptimizedRiskScoreCalculator()
         frs_calculator = FraminghamRiskScoreCalculator()
@@ -1282,7 +1160,7 @@ if os.path.exists(MODEL_PATH):
                 feature_names=feature_names
             )
             use_model = True
-            logger.info(" Model loaded and predictor initialized!")
+            logger.info(" Model loaded successfully!")
             logger.info(f"   Model: {model_info.get('name', 'Cardiovascular Risk Predictor')}")
             logger.info(f"   Version: {model_info.get('version', 'v6.0')}")
             logger.info(f"   Features: {len(feature_names)}")
@@ -1301,17 +1179,70 @@ if os.path.exists(MODEL_PATH):
         logger.error(f" Error loading model: {e}", exc_info=True)
         use_model = False
 else:
-    logger.error(f" Model not found at {MODEL_PATH}")
-    logger.error("   Please run train.py first to generate model")
+    logger.warning(f" Model not found at {MODEL_PATH}")
+    logger.warning(" Running in DEMO MODE without machine learning model")
+    logger.warning(" Framingham and Clinical Risk calculations will still work")
+    
+    # Inisialisasi dengan data dummy untuk demo mode
+    risk_calculator = OptimizedRiskScoreCalculator()
+    frs_calculator = FraminghamRiskScoreCalculator()
+    
+    # Buat label encoder dummy
+    label_encoder = LabelEncoder()
+    label_encoder.fit(['NORMAL', 'BORDERLINE_HYPERTENSION', 'HYPERTENSION_STAGE1',
+                      'HYPERTENSION_STAGE2', 'HYPERTENSION_CRISIS', 'TACHYCARDIA', 'BRADYCARDIA'])
+    
+    # Buat feature names dummy
+    feature_names = [
+        'systole', 'diastole', 'heart_rate', 'temperature', 'age', 'bmi',
+        'map', 'pulse_pressure', 'hr_variability', 'family_history_score',
+        'family_history_cvd', 'diabetes', 'has_fever'
+    ]
+    for status in ['never', 'former', 'current']:
+        feature_names.append(f'smoking_status_{status}')
+    for lifestyle in ['true', 'false']:
+        feature_names.append(f'active_lifestyle_{lifestyle}')
+    for severity in ['none', 'mild', 'moderate', 'high']:
+        feature_names.append(f'fever_severity_{severity}')
+    for fh_type in ['none', 'non-premature', 'premature']:
+        feature_names.append(f'family_history_type_{fh_type}')
+    for gender in ['male', 'female']:
+        feature_names.append(f'gender_{gender}')
+    for inherit in ['none', 'paternal', 'maternal', 'both']:
+        feature_names.append(f'inheritance_pattern_{inherit}')
+    
+    # Buat pipeline dummy untuk demo
+    class DemoPipeline:
+        def predict(self, X):
+            # Return prediction berdasarkan input sederhana
+            if X.iloc[0]['systole'] > 140:
+                return np.array(['HYPERTENSION_STAGE1'])
+            elif X.iloc[0]['heart_rate'] > 100:
+                return np.array(['TACHYCARDIA'])
+            else:
+                return np.array(['NORMAL'])
+        
+        def predict_proba(self, X):
+            # Return probabilities dummy
+            return np.array([[0.1, 0.1, 0.6, 0.1, 0.05, 0.03, 0.02]])
+    
+    pipeline = DemoPipeline()
+    predictor = CardiovascularPredictor(
+        pipeline=pipeline,
+        label_encoder=label_encoder,
+        risk_calculator=risk_calculator,
+        frs_calculator=frs_calculator,
+        feature_names=feature_names
+    )
+    use_model = True
+    logger.info(" DEMO MODE activated with dummy model")
 
 @app.route("/")
 def index():
-   
     return render_template('index.html')
 
 @app.route("/model-info")
 def get_model_info():
-    
     if not use_model:
         return jsonify({
             "error": "Model tidak tersedia",
@@ -1348,7 +1279,6 @@ def get_model_info():
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    
     if not use_model or predictor is None:
         return jsonify({
             "success": False,
@@ -1360,7 +1290,6 @@ def predict():
         data = request.get_json(force=True)
         logger.info(f" Received prediction request")
         
-        
         required_params = ['systole', 'diastole', 'heart_rate', 'temperature']
         missing_params = [param for param in required_params if param not in data]
         
@@ -1371,12 +1300,10 @@ def predict():
                 "status": "missing_parameter"
             }), 400
         
-        
         systole = float(data.get("systole", 120))
         diastole = float(data.get("diastole", 80))
         heart_rate = float(data.get("heart_rate", 72))
         temperature = float(data.get("temperature", 36.5))
-        
         
         if systole <= diastole:
             return jsonify({
@@ -1385,36 +1312,26 @@ def predict():
                 "status": "invalid_parameter"
             }), 400
         
-       
         age = int(data.get("age", 45))
         bmi = float(data.get("bmi", 24.0))
         smoking_status = data.get("smoking_status", "never")
         active_lifestyle = parse_boolean(data.get("active_lifestyle", True))
-        
-        
         diabetes = parse_boolean(data.get("diabetes", False))
-        
         gender = data.get("gender", "male")
-        
-       
         family_history_cvd = parse_boolean(data.get("family_history_cvd", False))
         family_history_score = int(data.get("family_history_score", 0))
         family_history_type = data.get("family_history_type", "none")
         inheritance_pattern = data.get("inheritance_pattern", "none")
-        
-       
         total_cholesterol = parse_float_or_none(data.get("total_cholesterol"))
         hdl_cholesterol = parse_float_or_none(data.get("hdl_cholesterol"))
         bp_treated = parse_boolean(data.get("bp_treated", False))
         
-       
         has_lab_data = total_cholesterol is not None and hdl_cholesterol is not None
         
         logger.info(f" Data status: Lab data {'available' if has_lab_data else 'NOT available'}")
         if has_lab_data:
             logger.info(f"   Total Cholesterol: {total_cholesterol}, HDL: {hdl_cholesterol}")
         
-       
         logger.info(f" Preparing input data...")
         input_df = predictor.prepare_input_data(
             systole=systole,
@@ -1425,7 +1342,7 @@ def predict():
             bmi=bmi,
             smoking_status=smoking_status,
             active_lifestyle=active_lifestyle,
-            diabetes=diabetes,  
+            diabetes=diabetes,
             family_history_cvd=family_history_cvd,
             family_history_score=family_history_score,
             family_history_type=family_history_type,
@@ -1435,16 +1352,14 @@ def predict():
         
         logger.info(f" Input data prepared. Shape: {input_df.shape}")
         
-       
         frs_params = {
             'age': age,
-            'diabetes': diabetes,  
+            'diabetes': diabetes,
             'gender': gender,
             'bp_treated': bp_treated,
             'systole': systole,
             'smoking_status': smoking_status
         }
-        
         
         if has_lab_data:
             frs_params['total_cholesterol'] = total_cholesterol
@@ -1453,7 +1368,6 @@ def predict():
             frs_params['total_cholesterol'] = None
             frs_params['hdl_cholesterol'] = None
         
-      
         logger.info(f" Making prediction...")
         prediction_result = predictor.predict_with_risk_scoring(
             input_df=input_df,
@@ -1479,7 +1393,6 @@ def predict():
                 "condition": "ERROR"
             }), 500
         
-        
         response = {
             "success": True,
             "status": "success",
@@ -1501,10 +1414,8 @@ def predict():
                 "emoji": prediction_result['custom_risk_emoji'],
                 "components": prediction_result.get('risk_components', {})
             },
-           
             "framingham_risk_score": prediction_result.get('framingham_risk_score'),
             "lab_data_available": prediction_result.get('lab_data_available', False),
-            
             "family_history_impact": {
                 "has_history": family_history_cvd,
                 "score": family_history_score,
@@ -1566,9 +1477,8 @@ def predict():
 
 @app.route("/health")
 def health_check():
-   
     status_details = {
-        "status": "healthy" if use_model else "model_not_loaded",
+        "status": "healthy" if use_model else "demo_mode",
         "model_loaded": use_model,
         "pipeline_available": pipeline is not None,
         "label_encoder_available": label_encoder is not None,
@@ -1582,7 +1492,6 @@ def health_check():
 
 @app.route("/debug-features", methods=["GET"])
 def debug_features():
-   
     if not use_model:
         return jsonify({"error": "Model not loaded"}), 503
     
@@ -1597,7 +1506,6 @@ def debug_features():
 
 @app.route("/sample-inputs", methods=["GET"])
 def get_sample_inputs():
-   
     samples = [
         {
             "description": " SKENARIO 1: Data lengkap dengan lab (FRS AKTIF)",
@@ -1698,7 +1606,6 @@ def get_sample_inputs():
         "timestamp": datetime.datetime.now().isoformat()
     })
 
-
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({
@@ -1722,13 +1629,16 @@ def internal_server_error(error):
 
 
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    host = os.environ.get("HOST", "0.0.0.0")
+    
     print("=" * 80)
     print("CARDIOVASCULAR RISK PREDICTION API v6.0 - DUAL SCORING SYSTEM")
     print("COMPATIBLE WITH train.py v6.0")
     print("=" * 80)
-    print(f"Model Status: {' LOADED' if use_model else ' NOT AVAILABLE'}")
+    print(f"Model Status: {' LOADED' if use_model else ' DEMO MODE'}")
     
-    if use_model:
+    if use_model and model_info:
         print(f"\n MODEL INFORMATION:")
         print(f"   Name: {model_info.get('name', 'Cardiovascular Risk Predictor')}")
         print(f"   Version: {model_info.get('version', 'v6.0')}")
@@ -1737,6 +1647,10 @@ if __name__ == "__main__":
         if label_encoder:
             classes = list(label_encoder.classes_)
             print(f"   Conditions ({len(classes)}): {', '.join(classes)}")
+    else:
+        print(f"\n DEMO MODE:")
+        print(f"   Using dummy model for demonstration")
+        print(f"   Framingham and Clinical Risk calculations are fully functional")
     
     print(f"\n DUAL SCORING SYSTEM:")
     print(f"    Clinical Risk Score: Selalu dihitung (tanpa data lab)")
@@ -1752,18 +1666,16 @@ if __name__ == "__main__":
     
     print(f"\n SAMPLE CURL COMMANDS:")
     print(f"  1. Dengan data lab (FRS AKTIF):")
-    print(f'     curl -X POST http://localhost:5000/predict \\')
+    print(f'     curl -X POST http://localhost:{port}/predict \\')
     print(f'          -H "Content-Type: application/json" \\')
     print(f'          -d \'{{"systole": 120, "diastole": 80, "heart_rate": 72, "temperature": 36.5, "age": 45, "diabetes": false, "total_cholesterol": 200, "hdl_cholesterol": 50}}\'')
     
     print(f"\n  2. Tanpa data lab (FRS TIDAK AKTIF):")
-    print(f'     curl -X POST http://localhost:5000/predict \\')
+    print(f'     curl -X POST http://localhost:{port}/predict \\')
     print(f'          -H "Content-Type: application/json" \\')
     print(f'          -d \'{{"systole": 120, "diastole": 80, "heart_rate": 72, "temperature": 36.5, "age": 45, "diabetes": false}}\'')
     
-    print(f"\n Starting server on http://localhost:5000")
+    print(f"\n Starting server on http://{host}:{port}")
     print("=" * 80)
     
-
-    app.run(host="0.0.0.0", port=5000, debug=True)
-
+    app.run(host=host, port=port, debug=True)
