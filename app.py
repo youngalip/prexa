@@ -174,6 +174,19 @@ class HybridRFSVM(BaseEstimator, ClassifierMixin):
         return self
 
 
+import pickle
+
+class HybridRFSVMUnpickler(pickle.Unpickler):
+    def find_class(self, module, name):
+        
+        if name == 'HybridRFSVM':
+          
+            print("!!! Custom Unpickler: Menemukan permintaan untuk HybridRFSVM, mengembalikan kelas lokal !!!")
+            return HybridRFSVM
+       
+        return super().find_class(module, name)
+
+
 class FraminghamRiskScoreCalculator:
     def __init__(self):
       
@@ -1209,29 +1222,14 @@ class CardiovascularPredictor:
         return recommendations[:10]  
 
 
-MODEL_PATH = "model/api_model.joblib"
+MODEL_DIR = "model"
+MODEL_PATH = os.path.join(MODEL_DIR, "api_model.joblib")
+
 
 app = Flask(__name__)
 
+
 logger.info(f"\n Loading model from: {MODEL_PATH}")
-
-# --- HACK TERAKHIR: Menimpa fungsi pencarian kelas pickle secara global ---
-# Ini akan mempengaruhi SEMUA proses unpickling di aplikasi ini.
-import pickle
-import sys
-
-original_find_class = pickle.Unpickler.find_class
-
-def hybrid_find_class(self, module, name):
-    if name == 'HybridRFSVM':
-        # Pastikan kelas HybridRFSVM sudah didefinisikan di file ini
-        return globals().get('HybridRFSVM')
-    return original_find_class(self, module, name)
-
-# Aplikasikan "patch"
-pickle.Unpickler.find_class = hybrid_find_class
-logger.info(" Global pickle patch applied.")
-# --------------------------------------------------------------------------
 
 use_model = False
 model_data = None
@@ -1243,33 +1241,39 @@ feature_names = None
 model_info = None
 predictor = None
 
+
 if os.path.exists(MODEL_PATH):
     try:
-        logger.info(f" Model file exists, loading with global patch...")
+        logger.info(f" Model file exists, loading with custom unpickler...")
         
-        # Sekarang kita bisa menggunakan joblib.load() biasa
-        # karena fungsi pencariannya sudah kita "bajak"
-        model_data = joblib.load(MODEL_PATH)
         
-        logger.info(" Model loaded successfully with global patch!")
+        with open(MODEL_PATH, 'rb') as f:
+            model_data = HybridRFSVMUnpickler(f).load()
         
-        # --- Sisanya sama ---
-        if isinstance(model_data, dict) and 'pipeline' in model_data:
+        logger.info(" Model loaded successfully with custom unpickler!")
+        
+      
+        if isinstance(model_data, dict):
             pipeline = model_data.get("pipeline")
             label_encoder = model_data.get("label_encoder")
             feature_names = model_data.get("feature_names")
             model_info = model_data.get("model_info", {})
         else:
+           
             pipeline = model_data
             label_encoder = None
             feature_names = []
             model_info = {}
         
-        # ... lanjutkan kode Anda seperti biasa ...
         risk_calculator = OptimizedRiskScoreCalculator()
         frs_calculator = FraminghamRiskScoreCalculator()
         
-        if pipeline is not None:
+        logger.info(f" Model verification:")
+        logger.info(f"   Pipeline type: {type(pipeline).__name__ if pipeline else 'None'}")
+        logger.info(f"   Label encoder: {'Loaded' if label_encoder else 'Not loaded'}")
+        logger.info(f"   Feature names count: {len(feature_names) if feature_names else 0}")
+        
+        if pipeline is not None and label_encoder is not None and feature_names:
             predictor = CardiovascularPredictor(
                 pipeline=pipeline,
                 label_encoder=label_encoder,
@@ -1279,8 +1283,18 @@ if os.path.exists(MODEL_PATH):
             )
             use_model = True
             logger.info(" Model loaded and predictor initialized!")
+            logger.info(f"   Model: {model_info.get('name', 'Cardiovascular Risk Predictor')}")
+            logger.info(f"   Version: {model_info.get('version', 'v6.0')}")
+            logger.info(f"   Features: {len(feature_names)}")
+            
+            if label_encoder:
+                classes = list(label_encoder.classes_)
+                logger.info(f"   Classes ({len(classes)}): {classes}")
         else:
-            logger.error(" Pipeline not found in model data")
+            logger.error(" Model components missing:")
+            logger.error(f"   Pipeline: {'OK' if pipeline else 'MISSING'}")
+            logger.error(f"   Label encoder: {'OK' if label_encoder else 'MISSING'}")
+            logger.error(f"   Feature names: {'OK' if feature_names else 'MISSING'}")
             use_model = False
         
     except Exception as e:
@@ -1289,7 +1303,6 @@ if os.path.exists(MODEL_PATH):
 else:
     logger.error(f" Model not found at {MODEL_PATH}")
     logger.error("   Please run train.py first to generate model")
-
 
 @app.route("/")
 def index():
@@ -1753,14 +1766,4 @@ if __name__ == "__main__":
     
 
     app.run(host="0.0.0.0", port=5000, debug=True)
-
-
-
-
-
-
-
-
-
-
 
