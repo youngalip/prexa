@@ -1215,6 +1215,11 @@ app = Flask(__name__)
 
 logger.info(f"\n Loading model from: {MODEL_PATH}")
 
+
+import sys
+sys.modules['__main__'].HybridRFSVM = HybridRFSVM
+
+
 use_model = False
 model_data = None
 pipeline = None
@@ -1227,38 +1232,12 @@ predictor = None
 
 if os.path.exists(MODEL_PATH):
     try:
-        logger.info(f" Model file exists, loading with workaround...")
-        
-       
-        import pickle
-        import sys
-        import builtins
-        
-       
-        builtins.HybridRFSVM = HybridRFSVM
-        
-       
-        sys.modules[__name__].HybridRFSVM = HybridRFSVM
+        logger.info(f" Model file exists, loading...")
         
         
-        class AlwaysHybridRFSVMUnpickler(pickle.Unpickler):
-            def find_class(self, module, name):
-              
-                if name == 'HybridRFSVM':
-                    return HybridRFSVM
-               
-                try:
-                    return super().find_class(module, name)
-                except AttributeError as e:
-                    if 'HybridRFSVM' in str(e):
-                        return HybridRFSVM
-                    raise
+        model_data = joblib.load(MODEL_PATH)
         
-        
-        with open(MODEL_PATH, 'rb') as f:
-            model_data = AlwaysHybridRFSVMUnpickler(f).load()
-        
-        logger.info(" Model loaded with custom unpickler workaround!")
+        logger.info(" Model loaded successfully!")
         
        
         if isinstance(model_data, dict) and 'pipeline' in model_data:
@@ -1771,6 +1750,7 @@ if __name__ == "__main__":
     
 
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
