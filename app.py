@@ -1226,7 +1226,7 @@ def get_model_info():
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    
+    """Endpoint untuk prediksi risiko kardiovaskular"""
     if not use_model or predictor is None:
         return jsonify({
             "success": False,
@@ -1235,94 +1235,114 @@ def predict():
         }), 503
     
     try:
+        # Get raw data
         data = request.get_json(force=True)
-        logger.info(f" Received prediction request")
+        logger.info(f"📥 Received prediction request")
+        logger.info(f"   Raw data: {data}")
         
-        
+        # Validate required params
         required_params = ['systole', 'diastole', 'heart_rate', 'temperature']
         missing_params = [param for param in required_params if param not in data]
         
         if missing_params:
+            logger.error(f"❌ Missing parameters: {missing_params}")
             return jsonify({
                 "success": False,
                 "error": f"Parameter berikut diperlukan: {', '.join(missing_params)}",
                 "status": "missing_parameter"
             }), 400
         
+        # Parse vital signs
+        try:
+            systole = float(data.get("systole", 120))
+            diastole = float(data.get("diastole", 80))
+            heart_rate = float(data.get("heart_rate", 72))
+            temperature = float(data.get("temperature", 36.5))
+        except (ValueError, TypeError) as e:
+            logger.error(f"❌ Invalid vital signs: {e}")
+            return jsonify({
+                "success": False,
+                "error": f"Nilai vital signs tidak valid: {str(e)}",
+                "status": "invalid_parameter"
+            }), 400
         
-        systole = float(data.get("systole", 120))
-        diastole = float(data.get("diastole", 80))
-        heart_rate = float(data.get("heart_rate", 72))
-        temperature = float(data.get("temperature", 36.5))
-        
-        
+        # Validate systole > diastole
         if systole <= diastole:
+            logger.error(f"❌ Systole <= Diastole: {systole} <= {diastole}")
             return jsonify({
                 "success": False,
                 "error": f"Systole ({systole}) harus lebih besar dari Diastole ({diastole})",
                 "status": "invalid_parameter"
             }), 400
         
-       
+        # Parse demographics with defaults
         age = int(data.get("age", 45))
         bmi = float(data.get("bmi", 24.0))
         smoking_status = data.get("smoking_status", "never")
         active_lifestyle = parse_boolean(data.get("active_lifestyle", True))
         
-        
+        # Parse medical history
         diabetes = parse_boolean(data.get("diabetes", False))
-        
         gender = data.get("gender", "male")
         
-       
+        # Parse family history
         family_history_cvd = parse_boolean(data.get("family_history_cvd", False))
         family_history_score = int(data.get("family_history_score", 0))
         family_history_type = data.get("family_history_type", "none")
         inheritance_pattern = data.get("inheritance_pattern", "none")
         
-       
+        # Parse lab data (optional)
         total_cholesterol = parse_float_or_none(data.get("total_cholesterol"))
         hdl_cholesterol = parse_float_or_none(data.get("hdl_cholesterol"))
         bp_treated = parse_boolean(data.get("bp_treated", False))
         
-       
         has_lab_data = total_cholesterol is not None and hdl_cholesterol is not None
         
-        logger.info(f" Data status: Lab data {'available' if has_lab_data else 'NOT available'}")
-        if has_lab_data:
-            logger.info(f"   Total Cholesterol: {total_cholesterol}, HDL: {hdl_cholesterol}")
+        logger.info(f"✓ Parsed parameters:")
+        logger.info(f"   Vitals: BP={systole}/{diastole}, HR={heart_rate}, Temp={temperature}")
+        logger.info(f"   Demographics: Age={age}, BMI={bmi}, Gender={gender}")
+        logger.info(f"   Lifestyle: Smoking={smoking_status}, Active={active_lifestyle}")
+        logger.info(f"   Medical: Diabetes={diabetes}")
+        logger.info(f"   Family: History={family_history_cvd}, Score={family_history_score}")
+        logger.info(f"   Lab data: {'Available' if has_lab_data else 'Not available'}")
         
-       
-        logger.info(f" Preparing input data...")
-        input_df = predictor.prepare_input_data(
-            systole=systole,
-            diastole=diastole,
-            heart_rate=heart_rate,
-            temperature=temperature,
-            age=age,
-            bmi=bmi,
-            smoking_status=smoking_status,
-            active_lifestyle=active_lifestyle,
-            diabetes=diabetes,  
-            family_history_cvd=family_history_cvd,
-            family_history_score=family_history_score,
-            family_history_type=family_history_type,
-            gender=gender,
-            inheritance_pattern=inheritance_pattern
-        )
+        # Prepare input data
+        logger.info(f"🔄 Preparing input data...")
+        try:
+            input_df = predictor.prepare_input_data(
+                systole=systole,
+                diastole=diastole,
+                heart_rate=heart_rate,
+                temperature=temperature,
+                age=age,
+                bmi=bmi,
+                smoking_status=smoking_status,
+                active_lifestyle=active_lifestyle,
+                diabetes=diabetes,
+                family_history_cvd=family_history_cvd,
+                family_history_score=family_history_score,
+                family_history_type=family_history_type,
+                gender=gender,
+                inheritance_pattern=inheritance_pattern
+            )
+            logger.info(f"✓ Input data prepared. Shape: {input_df.shape}")
+        except Exception as e:
+            logger.error(f"❌ Error preparing input: {e}", exc_info=True)
+            return jsonify({
+                "success": False,
+                "error": f"Error preparing input: {str(e)}",
+                "condition": "INPUT_ERROR"
+            }), 400
         
-        logger.info(f" Input data prepared. Shape: {input_df.shape}")
-        
-       
+        # Prepare FRS params
         frs_params = {
             'age': age,
-            'diabetes': diabetes,  
+            'diabetes': diabetes,
             'gender': gender,
             'bp_treated': bp_treated,
             'systole': systole,
             'smoking_status': smoking_status
         }
-        
         
         if has_lab_data:
             frs_params['total_cholesterol'] = total_cholesterol
@@ -1331,33 +1351,43 @@ def predict():
             frs_params['total_cholesterol'] = None
             frs_params['hdl_cholesterol'] = None
         
-      
-        logger.info(f" Making prediction...")
-        prediction_result = predictor.predict_with_risk_scoring(
-            input_df=input_df,
-            frs_params=frs_params,
-            systole=systole,
-            diastole=diastole,
-            heart_rate=heart_rate,
-            temperature=temperature,
-            age=age,
-            bmi=bmi,
-            smoking_status=smoking_status,
-            active_lifestyle=active_lifestyle,
-            diabetes=diabetes,
-            family_history_cvd=family_history_cvd,
-            family_history_score=family_history_score,
-            family_history_type=family_history_type
-        )
+        # Make prediction
+        logger.info(f"🤖 Making prediction...")
+        try:
+            prediction_result = predictor.predict_with_risk_scoring(
+                input_df=input_df,
+                frs_params=frs_params,
+                systole=systole,
+                diastole=diastole,
+                heart_rate=heart_rate,
+                temperature=temperature,
+                age=age,
+                bmi=bmi,
+                smoking_status=smoking_status,
+                active_lifestyle=active_lifestyle,
+                diabetes=diabetes,
+                family_history_cvd=family_history_cvd,
+                family_history_score=family_history_score,
+                family_history_type=family_history_type
+            )
+        except Exception as e:
+            logger.error(f"❌ Prediction error: {e}", exc_info=True)
+            return jsonify({
+                "success": False,
+                "error": f"Error during prediction: {str(e)}",
+                "condition": "PREDICTION_ERROR",
+                "detail": str(e)
+            }), 500
         
         if not prediction_result['success']:
+            logger.error(f"❌ Prediction failed: {prediction_result.get('error')}")
             return jsonify({
                 "success": False,
                 "error": prediction_result['error'],
                 "condition": "ERROR"
             }), 500
         
-        
+        # Build response
         response = {
             "success": True,
             "status": "success",
@@ -1379,10 +1409,8 @@ def predict():
                 "emoji": prediction_result['custom_risk_emoji'],
                 "components": prediction_result.get('risk_components', {})
             },
-           
             "framingham_risk_score": prediction_result.get('framingham_risk_score'),
             "lab_data_available": prediction_result.get('lab_data_available', False),
-            
             "family_history_impact": {
                 "has_history": family_history_cvd,
                 "score": family_history_score,
@@ -1424,22 +1452,23 @@ def predict():
             "medical_disclaimer": "HASIL INI HANYA SKRINING AWAL - KONSULTASIKAN DENGAN TENAGA MEDIS PROFESIONAL"
         }
         
-        logger.info(f" Prediction successful: {prediction_result['condition']}")
+        logger.info(f"✅ Prediction successful: {prediction_result['condition']}")
         return jsonify(response)
         
     except ValueError as e:
-        logger.error(f"ValueError: {e}")
+        logger.error(f"❌ ValueError: {e}", exc_info=True)
         return jsonify({
             "success": False,
             "error": str(e),
             "condition": "INPUT_ERROR"
         }), 400
     except Exception as e:
-        logger.error(f"Unexpected error: {e}", exc_info=True)
+        logger.error(f"❌ Unexpected error: {e}", exc_info=True)
         return jsonify({
             "success": False,
             "error": f"Terjadi kesalahan sistem: {str(e)}",
-            "condition": "SYSTEM_ERROR"
+            "condition": "SYSTEM_ERROR",
+            "detail": str(e)
         }), 500
 
 @app.route("/health")
