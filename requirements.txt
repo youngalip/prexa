@@ -1,16 +1,26 @@
-setuptools
-wheel
+# Build tools
+setuptools==75.6.0
+wheel==0.45.1
 
-flask
-numpy
-pandas
-scikit-learn
-imbalanced-learn
-joblib
-matplotlib
-seaborn
-openpyxl
-json5
-xlrd
-waitress
-gunicorn
+# Core Web Framework
+flask==3.0.3
+
+# Core ML/Data Science - CRITICAL: Pin to compatible versions
+numpy==1.26.4
+pandas==2.2.3
+scikit-learn==1.5.2
+imbalanced-learn==0.12.3
+joblib==1.4.2
+
+# Visualization (optional, tidak wajib untuk API)
+matplotlib==3.9.2
+seaborn==0.13.2
+
+# Data handling
+openpyxl==3.1.5
+json5==0.9.28
+xlrd==2.0.1
+
+# Production servers
+waitress==3.0.0
+gunicorn==23.0.0
