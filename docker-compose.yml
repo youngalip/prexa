@@ -2,8 +2,10 @@ version: '3.8'
 
 services:
   app:
-    build: .  
+    build: .
     ports:
-      - "8080:5000" 
+      - "8080:8080"  # Match internal port
+    environment:
+      - PORT=8080
     volumes:
-      - .:/app  
+      - .:/app

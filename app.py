@@ -1639,9 +1639,9 @@ if __name__ == "__main__":
     print(f'          -H "Content-Type: application/json" \\')
     print(f'          -d \'{{"systole": 120, "diastole": 80, "heart_rate": 72, "temperature": 36.5, "age": 45, "diabetes": false}}\'')
     
-    print(f"\n Starting server on http://localhost:5000")
+    print(f"\n🚀 Starting LOCAL development server on http://localhost:8080")
     print("=" * 80)
     
-
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    from waitress import serve
+    serve(app, host="0.0.0.0", port=8080, threads=4)
 
